@@ -52,6 +52,8 @@ class Account:
             'agree': True,
         }
         response_data = await self.post_request_with_headers_and_cookies(url, json_data)
+        authorization = f'Bearer {response_data["data"]["auth"]}'
+        self.headers['authorization'] = authorization
         print(response_data)
 
 
@@ -73,11 +75,9 @@ class Account:
         print(response_data['data']['points'])
 
 async def main():
-    account = Account('walletqq12123213aq@yandex.ru', 'A12fsaiki43fj', headers=headers)
-    await account.login()
-    print(account.headers)
+    account = Account('zxcqweasd123456@yandex.ru', 'A12fsaiki43fj', headers=headers)
+    await account.register()
     await account.quantity_points()
-
 
 if __name__ == '__main__':
     asyncio.run(main())
