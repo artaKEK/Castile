@@ -1,25 +1,10 @@
-import aiohttp
-import asyncio
+import base64
 
-async def post_data(url, payload):
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=payload) as response:
-            # Проверяем успешность ответа
-            if response.status == 200:
-                data = await response.json()  # Получаем данные в формате JSON
-                return data
-            else:
-                raise Exception(f"Ошибка при отправке данных: {response.status}")
+from aptos_sdk.account import Account
+from aptos_sdk.ed25519 import Signature
 
-async def main():
-    url = 'https://api.example.com/data'  # Укажите ваш URL
-    payload = {'key': 'value'}  # Данные, которые вы хотите отправить
-    try:
-        response = await post_data(url, payload)
-        print(response)  # Обработка полученных данных
-    except Exception as e:
-        print(e)
+private_key = '0x16bd6732fbd8344dafc7398bd075ca17edb1c1eb29db5787574d528eabfa06b5'
 
-# Запуск главной функции
-if __name__ == '__main__':
-    print(asyncio.run(post_data('https://api.example.com/data', )))
+account = Account.load_key(private_key)
+
+print(type(str(account.public_key())))

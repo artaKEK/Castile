@@ -2,7 +2,10 @@ import aiohttp
 
 import asyncio
 
+
 from fake_useragent import FakeUserAgent
+
+from wallet import Wallet
 
 headers = {
     'accept': 'application/json, text/plain, */*',
@@ -22,17 +25,18 @@ headers = {
     'user-agent': FakeUserAgent().random,
 }
 
+
 class Account:
-    def __init__(self, mail: str, password: str, cookies: dict | None = None, headers: dict | None = None):
+    def __init__(self, mail: str, password: str, cookies: dict | None = None, headers: dict | None = None, private_key: str | None = None):
         self.mail = mail
         self.password = password
         self.cookies = cookies
         self.headers = headers
+        self.wallet = Wallet(private_key=private_key)
 
     async def post_request_with_headers_and_cookies(self, url: str, json_data: dict):
 
         async with aiohttp.ClientSession() as session:
-
 
             async with session.post(url, json=json_data, headers=self.headers) as response:
                 if response.status == 200:
@@ -69,15 +73,28 @@ class Account:
         print(response_data)
 
     async def quantity_points(self):
-        json_data = {}
         url = 'https://castile.world/api/task/pointsInfo'
+        json_data = {}
         response_data = await self.post_request_with_headers_and_cookies(url, json_data)
         print(response_data['data']['points'])
 
+    async def bind_wallet(self):
+        url = 'https://castile.world/api/user/bindWallet'
+        json_data = {
+            'sign': self.wallet.signa(self.wallet.generate_massage()),
+            'publicKey': str(self.wallet.account.public_key()),
+            'address': str(self.wallet.account.address()),
+            'wallet': 'Petra',
+            'message': self.wallet.generate_massage(),
+            'type': 'Aptos',
+        }
+        response_data = await self.post_request_with_headers_and_cookies(url, json_data)
+        print(response_data)
+
 async def main():
-    account = Account('zxcqweasd123456@yandex.ru', 'A12fsaiki43fj', headers=headers)
-    await account.register()
-    await account.quantity_points()
+    account = Account('zxcqweasd123456789@yandex.ru', 'A12fsaiki43fj', headers=headers)
+    await account.login()
+    # await account.bind_wallet()
 
 if __name__ == '__main__':
     asyncio.run(main())
