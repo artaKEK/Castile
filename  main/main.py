@@ -6,6 +6,10 @@ import asyncio
 
 import twitter
 
+from id_tasks import Tasks
+
+from for_proxy import format_proxy
+
 from fake_useragent import FakeUserAgent
 
 from wallet import Wallet
@@ -28,21 +32,22 @@ headers = {
     'user-agent': FakeUserAgent().random,
 }
 
-
 class Account:
-    def __init__(self, mail: str | None = None, password: str | None = None, cookies: dict | None = None, headers: dict | None = None, private_key: str | None = None):
+    def __init__(self, mail: str | None = None, password: str | None = None, cookies: dict | None = None, headers: dict | None = None, private_key: str | None = None, proxy: str | None = None):
         self.mail = mail
         self.password = password
         self.cookies = cookies
         self.headers = headers
+        self.proxy = proxy
         self.wallet = Wallet(private_key=private_key)
 
-    async def request(self, url: str, type_request: str,json_data: dict | None = None, proxy: str | None = None, params: dict | None = None, for_json: bool = False):
+
+    async def request(self, url: str, type_request: str, json_data: dict | None = None, params: dict | None = None, for_json: bool = False):
 
         async with aiohttp.ClientSession() as session:
 
             if type_request == 'post':
-                async with session.post(url, json=json_data, headers=self.headers, proxy=proxy) as response:
+                async with session.post(url, json=json_data, headers=self.headers, proxy=self.proxy) as response:
                     if response.status == 200:
                         data = await response.json()
                         return data
@@ -50,7 +55,7 @@ class Account:
                         raise Exception(f"Ошибка при выполнении запроса: {response.status}, {await response.text()}")
 
             elif type_request == 'get':
-                async with session.get(url, headers=self.headers, proxy=proxy, params=params) as response:
+                async with session.get(url, headers=self.headers, proxy=self.proxy, params=params) as response:
                     if response.status == 200:
                         if for_json:
                             return response
@@ -70,7 +75,7 @@ class Account:
             'password_confirm': self.password,
             'agree': True,
         }
-        response_data = await self.request(url, 'post', json_data)
+        response_data = await self.request(url=url, type_request='post', json_data=json_data)
         authorization = f'Bearer {response_data["data"]["auth"]}'
         self.headers['authorization'] = authorization
         print(response_data)
@@ -81,8 +86,8 @@ class Account:
             'email': self.mail,
             'password': self.password,
         }
-        response_data = await self.request(url, 'post', json_data)
-        authorization =f'Bearer {response_data["data"]["auth"]}'
+        response_data = await self.request(url=url, type_request='post', json_data=json_data)
+        authorization = f'Bearer {response_data["data"]["auth"]}'
         self.headers['authorization'] = authorization
         print(response_data)
 
@@ -91,6 +96,11 @@ class Account:
         json_data = {}
         response_data = await self.request(url, 'post', json_data)
         print(response_data['data']['points'])
+
+    async def wallet_linked(self):
+        url = 'https://castile.world/api/user/getWallet'
+        response_data = await self.request(url=url, type_request='post')
+        return response_data
 
     async def bind_wallet(self):
         url = 'https://castile.world/api/user/bindWallet'
@@ -102,15 +112,18 @@ class Account:
             'message': self.wallet.generate_massage(),
             'type': 'Aptos',
         }
-        response_data = await self.request(url=url, type_request= 'post', json_data=json_data)
-        print(response_data)
+        wallet_linked = await self.wallet_linked()
+        if len(wallet_linked['data']) == 0:
+            response_data = await self.request(url=url, type_request= 'post', json_data=json_data)
+        else:
+            print(f'Wallet for account: {self.mail} already bind')
 
     async def get_user_info(self) -> dict:
         url = 'https://castile.world/api/user/pullUserInfo'
         response_data = await self.request(url, 'post')
         return response_data
 
-    async def bind_twitter(self, auth_token: str | None,  proxy: str | None = None):
+    async def bind_twitter(self, auth_token: str | None):
 
         url = 'https://www.castile.world/api/twitter/receive'
 
@@ -137,7 +150,7 @@ class Account:
 
         twitter_account = twitter.Account(auth_token=auth_token)
 
-        async with twitter.Client(twitter_account, proxy=proxy) as twitter_client:
+        async with twitter.Client(twitter_account, proxy=self.proxy) as twitter_client:
             auth_code = await twitter_client.oauth2(**auth_code_params)
 
         params = {
@@ -148,13 +161,34 @@ class Account:
         response_data = await self.request(url=url, type_request='get',params=params, for_json=True)
         print(response_data)
 
+    async def completed_task(self):
+        url = 'https://castile.world/gapi/task/v1/task'
+        for good_id in Tasks.need_id:
+            params = {
+                'id': good_id,
+                'params': '',
+            }
+            response_data = await self.request(url=url, type_request='get', params=params)
+
+    async def claim_reward(self):
+        url = 'https://castile.world/gapi/task/v1/reward'
+        for good_id in Tasks.need_id:
+            params = {
+                'id': good_id,
+            }
+            response_data = await self.request(url=url, type_request='get', params=params)
 
 async def main():
-    account = Account('zxcqweasd202526@yandex.ru', 'A12fsaiki43fj', headers=headers)
-    await account.login()
+    account = Account('zxcqweasd000@yandex.ru', 'A12fsaiki43fj', headers=headers, proxy=format_proxy('user210578:q67d4i@212.116.242.66:7486'))
+    # await account.register()
+    # await account.login()
     # await account.bind_wallet()
-    # await account.bind_twitter(auth_token='6173c4866966a15249685e21d800bdd281ddb15f', proxy='212.116.242.66:7486:user210578:q67d4i')
-    print(await account.get_user_info())
+    # await account.bind_twitter(auth_token='6173c4866966a15249685e21d800bdd281ddb15f')
+    # await account.quantity_points()
+    # await account.completed_task()
+    # await account.claim_reward()
+    # await account.quantity_points()
+    # print(await account.get_user_info())
 
 if __name__ == '__main__':
     asyncio.run(main())

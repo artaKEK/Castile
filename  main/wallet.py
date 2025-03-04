@@ -10,6 +10,10 @@ class Wallet:
             self.account = Account.load_key(private_key)
         else:
             self.account = Account.generate()
+        if private_key:
+            self.private_key = private_key
+        else:
+            self.private_key = self.account.private_key
 
     def signa(self, massage: str):
         byte_message = massage.encode()
@@ -23,8 +27,9 @@ class Wallet:
 
     @staticmethod
     def generate_massage():
-        current_time = int(time.time() * 1000)
-        massage = f'APTOS\nmessage: Welcome to the Castile platform’s wallet management process. By clicking to sign in, you are initiating the linking of your wallet address to your Castile account as a deposit wallet. This request will not trigger a blockchain transaction or cost any gas fees.\nnonce: {current_time}'
+        current_time = int(time.time())
+        rounded_time = int(current_time - current_time % 3600)
+        massage = f'APTOS\nmessage: Welcome to the Castile platform’s wallet management process. By clicking to sign in, you are initiating the linking of your wallet address to your Castile account as a deposit wallet. This request will not trigger a blockchain transaction or cost any gas fees.\nnonce: {rounded_time}'
         return massage
 
 
